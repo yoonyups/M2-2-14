@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiple Choice Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        .question-container {
+            font-size: 20px;
+            margin: 20px;
+        }
+        .question-image {
+            display: block;
+            margin: 10px 0;
+            max-width: 450px;
+        }
+        .choices {
+            margin: 10px 0;
+        }
+        .choice-label {
+            display: flex;
+            align-items: center;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .circle-number {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 5px;
+            color: black;
+        }
+        .selected {
+            color: red;
+        }
+        .correct {
+            color: green;
+        }
+        .wrong {
+            color: black;
+        }
+        .total-score {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .result-mark {
+            font-size: 18px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .correct-mark {
+            font-size: 17px;
+            color: rgb(90, 11, 239);
+        }
+        .wrong-mark {
+            font-size: 17px;
+            color: red;
+        }
+        .hint-button {
+            font-size: large;
+            font-weight: bold;
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #2781ac;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .link-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #be3702;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 13px;
+        }
+        .hint-image {
+            display: block;
+            margin: 10px 0;
+            max-width: 450px;
+        }
+        .hidden {
+            display: none;
+        }
+        .hint-button1 {margin-bottom: 15px; margin-top: 10px; padding: 5px 10px; background-color: #febd18; color: white; border: none;font-weight: bold; cursor: pointer; border-radius: 16px; }
+        .morphing-text { font-size: 26px; color: #c80000; text-align: center; white-space: nowrap; width: 100%; display: flex; }
+ 
+ 
+        .submit-button { margin-left: 10px;
+            padding: 5px 10px;
+            background-color: hsl(54, 85%, 57%);
+            color: #000000;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            border-radius: 7px;}
+
+            .question-container {
+    position: relative;
+    display: inline-block;
+}
+
+.overlay-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; 
+    /* Ensure the overlay image doesn't interfere with interactions */
+      }  
+
+
+        .image-container {
+    position: relative;
+    display: inline-block;
+}
+
+.question-image {
+    display: block;
+}
+
+.overlay-image {
+            position: absolute;
+    top: 50%; 
+    left: 10%; /* Move the image 10% from the left edge of the container */
+    transform: translateY(-50%); 
+    height: auto; 
+    width: auto; 
+    max-height: 100%; 
+    max-width: 50%; 
+    pointer-events: none;
+    opacity: 0.5; /* 50% transparency */
+        }
+ 
+ 
+        .answer-input {
+        width: 70%;
+        padding: 10px;
+        margin: 10px 0;
+        box-sizing: border-box;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        
+    }
+
+    .answer-input:focus {
+        border-color: #4CAF50;
+        outline: none;
+    }
+ 
+ 
+ .input-guide
+ {
+    margin-top: 0px;
+    font-size: 26px; color: #c80000; 
+    text-align: center; 
+    white-space: nowrap;
+     width: 100%; 
+    display: flex;
+ }
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <!-- Questions will be dynamically added here -->
+</div>
+
+<button onclick="submitQuiz()">Submit Quiz</button>
+<p id="total-score" class="total-score"></p>
+
+<script>
+    let questions = [];
+    let selectedChoices = [];
+    let correctAnswers = [];
+    let score = 0;
+
+   
+
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch('problems.txt')
+            .then(response => response.text())
+            .then(text => {
+                const problems = text.split('\n');
+                const quizContainer = document.getElementById('quiz-container');
+
+                problems.forEach((problem, index) => {
+                    MathJax.typesetPromise();
+                    const problemData = problem.split(' | ');
+                    const questionText = problemData[0].trim();
+                    const imagePath = problemData[1].trim();
+                    const link = problemData[2].trim();
+                    const choices = problemData.slice(3, 8);
+                    const correctAnswer = problemData[8].trim(); // Store as a string, not a number
+
+                    const inputGuide = problemData[9].trim();
+                    const problemAudio = problemData[10].trim();
+                    const answerSteps = problemData[11].replace(/"/g, "").split(',').map(step => step.trim()).filter(step => step !== '');
+                    const overlapCount = problemData[12].trim(); 
+                    const hintImages1 = problemData.slice(13,20);
+
+                    correctAnswers.push(correctAnswer);
+
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = "question-container";
+
+                    let audioHTML = '';
+                    if (problemAudio !== '') {
+                        audioHTML = `<audio src="${problemAudio}" controls>Your browser does not support the audio element.</audio>`;
+                    }
+
+                    let linkButtonHTML = '';
+                    const linkContent = problemData[12].trim(); // Assuming problemData[11] contains the content for the link button
+                    if (linkContent !== '| |') {
+                        linkButtonHTML = `<button id="link-button-${index}" class="link-button hidden">YouTube</button>`;
+                    }
+
+                    questionDiv.innerHTML = `
+                    
+                        <button class="hint-button" onclick="showHint(${index})">HANZO MATH PROBLEM${index+1} </button>
+                        ${linkButtonHTML}
+                        <p>${questionText}</p>
+                        <img src="${imagePath}" alt="Question Image" class="question-image">
+                        ${audioHTML}
+                        <div id="hints-container-${index}"></div>
+                        <button class="submit-button" onclick="submitOX(${index})">OX </button>
+                    `;
+                    
+                    const linkButton = questionDiv.querySelector(`#link-button-${index}`);
+                    if (link.startsWith('http')) {
+                        linkButton.classList.remove('hidden');
+                        linkButton.onclick = () => window.open(link, '_blank');
+                    }
+
+                    const isInputMode = choices.every(choice => choice.trim() === "");
+
+                    const choicesDiv = document.createElement('div');
+                    choicesDiv.className = "choices";
+
+                    if (isInputMode) {
+                        choicesDiv.innerHTML = `
+                            <input type="text" id="input-answer-${index}" class="answer-input" placeholder="아래 예시답 형식을 따라 기입하세요.">
+                            <span id="result${index}" class="result-mark"></span>
+                             <p class="input-guide">${inputGuide}</p>
+                        `;
+                       
+                    } else {
+                        choices.forEach((choice, choiceIndex) => {
+                            const choiceNumber = choiceIndex + 1;
+                            const circleNumber = getCircleNumber(choiceNumber);
+                            choicesDiv.innerHTML += `
+                                <label class="choice-label" onclick="selectChoice(${index}, ${choiceNumber})">
+                                    <span id="circle${index}-${choiceNumber}" class="circle-number">${circleNumber}</span>
+                                    <span>${choice}</span>
+                                    <span id="result${index}-${choiceNumber}" class="result-mark"></span>
+                                </label><br>
+                            `;
+                        });
+                    }
+
+                    questionDiv.appendChild(choicesDiv);
+
+
+                    const answerElem = document.createElement('div');
+                    answerElem.classList.add('morphing-text');
+                    answerElem.textContent = "";
+
+                    const showHintButton = document.createElement('button');
+                    showHintButton.textContent = 'HINTS';
+                    showHintButton.classList.add('hint-button1');
+                    showHintButton.onclick = () => toggleMorph(answerElem, answerSteps, showHintButton);
+
+                    if (answerSteps.length === 0) {
+                        showHintButton.style.display = 'none';
+                    }
+
+                    questionDiv.querySelector('.question-image').after(showHintButton, answerElem);
+
+                    quizContainer.appendChild(questionDiv);
+
+                    selectedChoices.push(null);
+                    questions.push({ hintImages: hintImages1, hintClickCount: 0, overlapCount });
+                
+                
+                
+                    MathJax.typesetPromise();
+                
+                });
+            });
+    });
+
+
+    function toggleMorph(answerElem, steps, button) {
+        let index = 0;
+        if (answerElem.intervalId) {
+            clearInterval(answerElem.intervalId);
+            answerElem.intervalId = null;
+            button.textContent = 'HINTS';
+            answerElem.textContent = "";
+        } else {
+            answerElem.intervalId = setInterval(() => {
+                answerElem.textContent = steps[index];
+                MathJax.typesetPromise([answerElem]);
+                index = (index + 1) % steps.length;
+            }, 1600);
+            button.textContent = 'STOP';
+        }
+    }
+
+    function getCircleNumber(number) {
+        const circleNumbers = ['➀', '➁', '➂', '➃', '➄'];
+        return circleNumbers[number - 1];
+    }
+
+    function selectChoice(questionIndex, choiceNumber) {
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(`circle${questionIndex}-${i}`).classList.remove('selected');
+        }
+        document.getElementById(`circle${questionIndex}-${choiceNumber}`).classList.add('selected');
+        selectedChoices[questionIndex] = choiceNumber;
+    }
+
+    function showHint(questionIndex) {
+        const question = questions[questionIndex];
+        const hintsContainer = document.getElementById(`hints-container-${questionIndex}`);
+        const problemImage = document.querySelectorAll('.question-container')[questionIndex].querySelector('.question-image');
+        const overlapCount = parseInt(question.overlapCount, 10);
+
+        if (question.hintClickCount < overlapCount && problemImage) {
+            // Substitute the problem image with the hint image during overlap count
+            problemImage.src = question.hintImages[question.hintClickCount];
+        } else if (question.hintClickCount < question.hintImages.length) {
+            // Show subsequent hint images below the problem image
+            const newHintImage = document.createElement('img');
+            newHintImage.src = question.hintImages[question.hintClickCount];
+            newHintImage.classList.add('hint-image');
+            hintsContainer.appendChild(newHintImage);
+        }
+
+        question.hintClickCount++;
+    }
+
+    function submitQuiz() {
+    score = 0;
+
+    selectedChoices.forEach((choice, index) => {
+        const isInputMode = document.getElementById(`input-answer-${index}`) !== null;
+
+        if (isInputMode) {
+            // Handle input answer comparison
+            const userAnswer = document.getElementById(`input-answer-${index}`).value.trim().toLowerCase();
+            const correctAnswer = correctAnswers[index].toString().trim().toLowerCase();
+            const resultSpan = document.getElementById(`result${index}`);
+
+            if (userAnswer === correctAnswer) {
+                score += 1;
+                resultSpan.innerText = "O";
+                resultSpan.classList.add('correct-mark');
+            } else {
+                resultSpan.innerText = "X";
+                resultSpan.classList.add('wrong-mark');
+            }
+        } else {
+            // Handle multiple-choice selection
+            if (choice === correctAnswers[index]) {
+                score += 1;
+                document.getElementById(`result${index}-${choice}`).innerText = "O";
+                document.getElementById(`result${index}-${choice}`).classList.add('correct-mark');
+            } else {
+                document.getElementById(`result${index}-${choice}`).innerText = "X";
+                document.getElementById(`result${index}-${choice}`).classList.add('wrong-mark');
+                const correctChoice = correctAnswers[index];
+                document.getElementById(`result${index}-${correctChoice}`).innerText = "O";
+                document.getElementById(`result${index}-${correctChoice}`).classList.add('correct-mark');
+            }
+        }
+    });
+
+    document.getElementById('total-score').innerText = `Your Correct Answer is ${score} problems.`;
+}
+
+function submitOX(index) {
+    const isInputMode = document.getElementById(`input-answer-${index}`) !== null;
+    let isCorrect = false;
+
+    if (isInputMode) {
+        // Get user's answer from the specific input box
+        const userAnswer = document.getElementById(`input-answer-${index}`).value.trim().toLowerCase();
+        const correctAnswer = correctAnswers[index]?.toString().trim().toLowerCase();
+        isCorrect = userAnswer === correctAnswer;
+
+        // Get the result container (next to input box)
+        let resultSpan = document.getElementById(`result${index}`);
+
+        // Remove previous overlay image if exists
+        resultSpan.innerHTML = "";
+
+        // Create OX image
+        let img = document.createElement("img");
+        img.src = isCorrect ? "O.jpg" : "X.jpg";
+        img.style.width = "50px";  // Adjust size
+        img.style.height = "50px";
+        img.style.marginLeft = "10px"; // Space from input box
+
+        // Append OX image beside the correct input box
+        resultSpan.appendChild(img);
+    } else {
+        // Multiple choice case (Overlay OX over problem image)
+        const choice = selectedChoices[index];
+        if (choice === null) {
+            alert("Please select an answer.");
+            return;
+        }
+
+        isCorrect = choice == correctAnswers[index];
+
+        // Get the problem image inside the question container
+        const questionContainer = document.querySelectorAll('.question-container')[index];
+        const problemImage = questionContainer.querySelector('.question-image');
+        
+        if (!problemImage) {
+            console.error("Problem image not found!");
+            return;
+        }
+
+        // Remove previous overlays
+        const existingOverlay = questionContainer.querySelector('.overlay-image');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create overlay image
+        const overlayImage = document.createElement('img');
+        overlayImage.src = isCorrect ? "O.jpg" : "X.jpg";
+        overlayImage.className = "overlay-image";
+
+      /*  // Style the overlay image
+        overlayImage.style.position = "absolute";
+        overlayImage.style.top = "50%";
+        overlayImage.style.left = "50%";
+        overlayImage.style.transform = "translate(-50%, -50%)";
+        overlayImage.style.width = problemImage.clientWidth + "px";  // Match problem image width
+        overlayImage.style.height = problemImage.clientHeight + "px"; // Match problem image height
+        overlayImage.style.opacity = "0.8"; // Slight transparency
+        overlayImage.style.zIndex = "10"; // Ensure it appears on top
+*/
+        // Ensure container has relative position for proper overlay placement
+        questionContainer.style.position = "relative";
+
+        // Append the overlay image
+        questionContainer.appendChild(overlayImage);
+    }
+}
+
+
+
+</script>
+
+</body>
+</html>
